@@ -2,7 +2,7 @@
   "global": {
     "backup_base_dir": "./backups",
     "log_dir": "./logs",
-    "s3_endpoint": "https://s3.wasabisys.com",
+    "s3_endpoint": "https://s3.us-east-1.wasabisys.com",
     "s3_region": "us-east-1",
     "temp_cleanup": true
   },

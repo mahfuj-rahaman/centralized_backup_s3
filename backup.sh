@@ -871,14 +871,18 @@ main() {
     S3_REGION=$(jq -r '.global.s3_region' "$CONFIG_FILE")
     TEMP_CLEANUP=$(jq -r '.global.temp_cleanup // true' "$CONFIG_FILE")
 
-    # Convert relative paths to absolute
+    # Convert relative paths to absolute and normalize
     if [[ ! "$BACKUP_BASE_DIR" = /* ]]; then
-        BACKUP_BASE_DIR="${SCRIPT_DIR}/${BACKUP_BASE_DIR}"
+        BACKUP_BASE_DIR="$(cd "${SCRIPT_DIR}" && cd "${BACKUP_BASE_DIR}" 2>/dev/null && pwd || echo "${SCRIPT_DIR}/${BACKUP_BASE_DIR}")"
     fi
+    # Normalize absolute path to remove ./ and ../
+    BACKUP_BASE_DIR="$(realpath -m "$BACKUP_BASE_DIR" 2>/dev/null || readlink -f "$BACKUP_BASE_DIR" 2>/dev/null || echo "$BACKUP_BASE_DIR")"
 
     if [[ ! "$LOG_DIR" = /* ]]; then
-        LOG_DIR="${SCRIPT_DIR}/${LOG_DIR}"
+        LOG_DIR="$(cd "${SCRIPT_DIR}" && cd "${LOG_DIR}" 2>/dev/null && pwd || echo "${SCRIPT_DIR}/${LOG_DIR}")"
     fi
+    # Normalize absolute path to remove ./ and ../
+    LOG_DIR="$(realpath -m "$LOG_DIR" 2>/dev/null || readlink -f "$LOG_DIR" 2>/dev/null || echo "$LOG_DIR")"
 
     # Setup logging
     setup_logging
