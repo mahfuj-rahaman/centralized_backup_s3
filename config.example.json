@@ -8,7 +8,7 @@
   },
   "sites": [
     {
-      "_comment": "Example 1: WordPress site with bind mounts (multi-container: database + wordpress)",
+      "_comment": "Example 1: WordPress site with bind mounts and date-organized S3 folders (multi-container: database + wordpress)",
       "site_id": "wordpress-bind-example",
       "site_name": "WordPress with Bind Mounts (Multi-container)",
       "enabled": true,
@@ -20,7 +20,8 @@
       },
       "s3": {
         "bucket": "my-backups",
-        "path": "docker-volumes/wordpress-bind"
+        "path": "docker-volumes/{date}/wordpress-bind",
+        "_comment": "Date placeholders: {date} = YYYY-MM-DD, {year} = YYYY, {month} = MM, {day} = DD, {timestamp} = YYYYMMDD_HHMMSS"
       },
       "volumes": [
         {
@@ -62,7 +63,7 @@
       ]
     },
     {
-      "_comment": "Example 2: Docker named volumes only",
+      "_comment": "Example 2: Docker named volumes with year/month organization",
       "site_id": "wordpress-volumes",
       "site_name": "WordPress with Docker Volumes",
       "enabled": false,
@@ -74,7 +75,8 @@
       },
       "s3": {
         "bucket": "my-backups",
-        "path": "docker-volumes/wordpress-volumes"
+        "path": "docker-volumes/{year}/{month}/wordpress-volumes",
+        "_comment": "Organizes backups by year and month folders"
       },
       "volumes": [
         {
@@ -90,7 +92,7 @@
       ]
     },
     {
-      "_comment": "Example 3: Mixed - bind mounts + Docker volumes together",
+      "_comment": "Example 3: Mixed - bind mounts + Docker volumes with simple date organization",
       "site_id": "mixed-example",
       "site_name": "Mixed Bind Mounts and Docker Volumes",
       "enabled": false,
@@ -102,7 +104,8 @@
       },
       "s3": {
         "bucket": "my-backups",
-        "path": "docker-volumes/mixed-example"
+        "path": "{date}/mixed-example",
+        "_comment": "Date at beginning: backups organized as 2026-01-12/mixed-example/"
       },
       "volumes": [
         {

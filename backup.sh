@@ -218,6 +218,26 @@ cleanup_temp_files() {
 # Docker Volume Backup Functions
 ################################################################################
 
+substitute_date_placeholders() {
+    local path=$1
+    local timestamp=${2:-$(date +%Y%m%d_%H%M%S)}
+
+    # Extract date components from timestamp (format: YYYYMMDD_HHMMSS)
+    local year=$(echo "$timestamp" | cut -c1-4)
+    local month=$(echo "$timestamp" | cut -c5-6)
+    local day=$(echo "$timestamp" | cut -c7-8)
+    local date_formatted="${year}-${month}-${day}"
+
+    # Replace placeholders
+    path="${path//\{date\}/$date_formatted}"
+    path="${path//\{year\}/$year}"
+    path="${path//\{month\}/$month}"
+    path="${path//\{day\}/$day}"
+    path="${path//\{timestamp\}/$timestamp}"
+
+    echo "$path"
+}
+
 check_volume_exists() {
     local volume_name=$1
 
@@ -416,14 +436,26 @@ list_s3_backups() {
     local site_id=$3
     local s3_endpoint=$4
     local s3_region=$5
+    local use_recursive=${6:-false}
 
     # List backup packages for this site from S3
     # Packages are named: site_id_package_timestamp.tar.gz
-    aws s3 ls "s3://${s3_bucket}/${s3_path}/" \
-        --endpoint-url "$s3_endpoint" \
-        --region "$s3_region" 2>/dev/null | \
-        grep "${site_id}_package_" | \
-        awk '{print $4}' || echo ""
+
+    if [[ "$use_recursive" == "true" ]]; then
+        # Recursive listing for date-based folder structures
+        aws s3 ls "s3://${s3_bucket}/${s3_path}/" --recursive \
+            --endpoint-url "$s3_endpoint" \
+            --region "$s3_region" 2>/dev/null | \
+            grep "${site_id}_package_" | \
+            awk '{print $4}' || echo ""
+    else
+        # Standard non-recursive listing
+        aws s3 ls "s3://${s3_bucket}/${s3_path}/" \
+            --endpoint-url "$s3_endpoint" \
+            --region "$s3_region" 2>/dev/null | \
+            grep "${site_id}_package_" | \
+            awk '{print $4}' || echo ""
+    fi
 }
 
 create_backup_package() {
@@ -508,7 +540,15 @@ delete_from_s3() {
     local s3_endpoint=$4
     local s3_region=$5
 
-    local s3_uri="s3://${s3_bucket}/${s3_path}/${filename}"
+    # Check if filename already contains path (from recursive listing)
+    local s3_uri
+    if [[ "$filename" == */* ]]; then
+        # Filename contains path, use bucket + filename directly
+        s3_uri="s3://${s3_bucket}/${filename}"
+    else
+        # Simple filename, construct full path
+        s3_uri="s3://${s3_bucket}/${s3_path}/${filename}"
+    fi
 
     if [[ "$DRY_RUN" == true ]]; then
         log_info "[DRY RUN] Would delete from S3: $filename"
@@ -536,11 +576,12 @@ apply_retention_count() {
     local keep_count=$4
     local s3_endpoint=$5
     local s3_region=$6
+    local use_recursive=${7:-false}
 
     log_info "Applying count-based retention: keep last $keep_count backups"
 
     # List S3 backups for this site, sorted by name (which includes timestamp)
-    local backups=$(list_s3_backups "$s3_bucket" "$s3_path" "$site_id" "$s3_endpoint" "$s3_region" | sort -r)
+    local backups=$(list_s3_backups "$s3_bucket" "$s3_path" "$site_id" "$s3_endpoint" "$s3_region" "$use_recursive" | sort -r)
 
     if [[ -z "$backups" ]]; then
         log_info "No backups found in S3 for retention cleanup"
@@ -578,6 +619,7 @@ apply_retention_days() {
     local keep_days=$4
     local s3_endpoint=$5
     local s3_region=$6
+    local use_recursive=${7:-false}
 
     log_info "Applying days-based retention: keep backups for $keep_days days"
 
@@ -594,7 +636,7 @@ apply_retention_days() {
     log_info "Cutoff date: $cutoff_date"
 
     # List backups
-    local backups=$(list_s3_backups "$s3_bucket" "$s3_path" "$site_id" "$s3_endpoint" "$s3_region")
+    local backups=$(list_s3_backups "$s3_bucket" "$s3_path" "$site_id" "$s3_endpoint" "$s3_region" "$use_recursive")
 
     if [[ -z "$backups" ]]; then
         log_info "No backups found in S3 for retention cleanup"
@@ -783,6 +825,9 @@ process_site() {
             local s3_bucket=$(jq -r ".sites[$site_index].s3.bucket" "$config_file")
             local s3_path=$(jq -r ".sites[$site_index].s3.path" "$config_file")
 
+            # Substitute date placeholders in S3 path
+            s3_path=$(substitute_date_placeholders "$s3_path" "$timestamp")
+
             if upload_to_s3 "$package_file" "$s3_bucket" "$s3_path" "$S3_ENDPOINT" "$S3_REGION"; then
                 log_success "Package uploaded to S3 successfully"
             else
@@ -797,12 +842,25 @@ process_site() {
     local retention_type=$(jq -r ".sites[$site_index].retention.type" "$config_file")
     local retention_value=$(jq -r ".sites[$site_index].retention.value" "$config_file")
     local s3_bucket=$(jq -r ".sites[$site_index].s3.bucket" "$config_file")
-    local s3_path=$(jq -r ".sites[$site_index].s3.path" "$config_file")
+    local s3_path_template=$(jq -r ".sites[$site_index].s3.path" "$config_file")
+
+    # Determine if path has date placeholders
+    local use_recursive="false"
+    local s3_path_for_retention="$s3_path_template"
+
+    if [[ "$s3_path_template" =~ \{(date|year|month|day|timestamp)\} ]]; then
+        # Path contains date placeholders - use recursive search
+        use_recursive="true"
+        # Remove date placeholder component for retention base path
+        # Remove trailing date folder patterns like /{date} or /{year}/{month}
+        s3_path_for_retention=$(echo "$s3_path_template" | sed -E 's!/?\{[^}]+\}(/|$)!/!g' | sed 's!/$!!')
+        log_info "Using recursive S3 search for date-organized backups (base path: $s3_path_for_retention)"
+    fi
 
     if [[ "$retention_type" == "count" ]]; then
-        apply_retention_count "$site_id" "$s3_bucket" "$s3_path" "$retention_value" "$S3_ENDPOINT" "$S3_REGION"
+        apply_retention_count "$site_id" "$s3_bucket" "$s3_path_for_retention" "$retention_value" "$S3_ENDPOINT" "$S3_REGION" "$use_recursive"
     elif [[ "$retention_type" == "days" ]]; then
-        apply_retention_days "$site_id" "$s3_bucket" "$s3_path" "$retention_value" "$S3_ENDPOINT" "$S3_REGION"
+        apply_retention_days "$site_id" "$s3_bucket" "$s3_path_for_retention" "$retention_value" "$S3_ENDPOINT" "$S3_REGION" "$use_recursive"
     else
         log_warning "Unknown retention type: $retention_type"
     fi
