@@ -1,0 +1,189 @@
+{
+  "global": {
+    "backup_base_dir": "./backups",
+    "log_dir": "./logs",
+    "s3_endpoint": "https://s3.wasabisys.com",
+    "s3_region": "us-east-1",
+    "temp_cleanup": true
+  },
+  "sites": [
+    {
+      "_comment": "Example 1: WordPress site with bind mounts (multi-container: database + wordpress)",
+      "site_id": "wordpress-bind-example",
+      "site_name": "WordPress with Bind Mounts (Multi-container)",
+      "enabled": true,
+      "backup_frequency": "daily",
+      "retention": {
+        "type": "count",
+        "value": 7,
+        "description": "Keep last 7 backups"
+      },
+      "s3": {
+        "bucket": "my-backups",
+        "path": "docker-volumes/wordpress-bind"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "path": "/sites/example.com/docker-compose.yml",
+          "name": "docker_compose",
+          "description": "Docker Compose configuration file"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/.env",
+          "name": "env_file",
+          "description": "Environment variables file"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/mariadb-data",
+          "name": "mariadb_data",
+          "description": "MariaDB database files (database container)"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/web",
+          "name": "wordpress_web",
+          "description": "WordPress site files (wordpress container)"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/apache-config.conf",
+          "name": "apache_config",
+          "description": "Apache config file (wordpress container)"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/php.ini",
+          "name": "php_config",
+          "description": "PHP config file (wordpress container)"
+        }
+      ]
+    },
+    {
+      "_comment": "Example 2: Docker named volumes only",
+      "site_id": "wordpress-volumes",
+      "site_name": "WordPress with Docker Volumes",
+      "enabled": false,
+      "backup_frequency": "daily",
+      "retention": {
+        "type": "count",
+        "value": 7,
+        "description": "Keep last 7 backups"
+      },
+      "s3": {
+        "bucket": "my-backups",
+        "path": "docker-volumes/wordpress-volumes"
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "name": "wordpress_data",
+          "description": "WordPress uploads and content (Docker volume)"
+        },
+        {
+          "type": "volume",
+          "name": "wordpress_db",
+          "description": "MySQL database volume (Docker volume)"
+        }
+      ]
+    },
+    {
+      "_comment": "Example 3: Mixed - bind mounts + Docker volumes together",
+      "site_id": "mixed-example",
+      "site_name": "Mixed Bind Mounts and Docker Volumes",
+      "enabled": false,
+      "backup_frequency": "daily",
+      "retention": {
+        "type": "days",
+        "value": 30,
+        "description": "Keep backups for 30 days"
+      },
+      "s3": {
+        "bucket": "my-backups",
+        "path": "docker-volumes/mixed-example"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "path": "/sites/example.com/config",
+          "name": "config_files",
+          "description": "Configuration files (bind mount)"
+        },
+        {
+          "type": "volume",
+          "name": "postgres_data",
+          "description": "PostgreSQL database (Docker volume)"
+        },
+        {
+          "type": "bind",
+          "path": "/sites/example.com/uploads",
+          "name": "user_uploads",
+          "description": "User uploaded files (bind mount)"
+        }
+      ]
+    },
+    {
+      "_comment": "Example 4: Nextcloud with Docker volumes",
+      "site_id": "nextcloud-prod",
+      "site_name": "Nextcloud Production",
+      "enabled": false,
+      "backup_frequency": "daily",
+      "retention": {
+        "type": "days",
+        "value": 30,
+        "description": "Keep backups for 30 days"
+      },
+      "s3": {
+        "bucket": "my-backups",
+        "path": "docker-volumes/nextcloud-prod"
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "name": "nextcloud_data",
+          "description": "Nextcloud user data (Docker volume)"
+        },
+        {
+          "type": "volume",
+          "name": "nextcloud_db",
+          "description": "Nextcloud database (Docker volume)"
+        }
+      ]
+    },
+    {
+      "_comment": "Example 5: GitLab with multiple volumes",
+      "site_id": "gitlab-prod",
+      "site_name": "GitLab Production",
+      "enabled": false,
+      "backup_frequency": "weekly",
+      "retention": {
+        "type": "count",
+        "value": 4,
+        "description": "Keep last 4 weekly backups"
+      },
+      "s3": {
+        "bucket": "my-backups",
+        "path": "docker-volumes/gitlab-prod"
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "name": "gitlab_config",
+          "description": "GitLab configuration (Docker volume)"
+        },
+        {
+          "type": "volume",
+          "name": "gitlab_data",
+          "description": "GitLab repositories and data (Docker volume)"
+        },
+        {
+          "type": "volume",
+          "name": "gitlab_logs",
+          "description": "GitLab logs (Docker volume)"
+        }
+      ]
+    }
+  ]
+}

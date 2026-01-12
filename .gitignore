@@ -1,0 +1,35 @@
+# Environment variables (contains sensitive credentials)
+.env
+
+# Configuration file (may contain sensitive info)
+config.json
+
+# Backup files
+backups/
+*.tar.gz
+*.tar.gz.enc
+
+# Log files
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+desktop.ini
+
+# Claude plans (optional - uncomment if you don't want to track plans)
+# .claude/plans/
