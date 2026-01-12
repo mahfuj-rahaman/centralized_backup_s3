@@ -31,5 +31,5 @@ Thumbs.db
 .DS_Store
 desktop.ini
 
-# Claude plans (optional - uncomment if you don't want to track plans)
-# .claude/plans/
+# Claude local settings and plans
+.claude/
