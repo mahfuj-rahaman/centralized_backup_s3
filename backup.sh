@@ -370,6 +370,17 @@ upload_to_s3() {
 
     log_info "Uploading to S3: $s3_uri"
 
+    # Verify file exists before attempting upload
+    if [[ ! -f "$local_file" ]]; then
+        log_error "Local file does not exist: $local_file"
+        log_error "Cannot upload to S3"
+        return 1
+    fi
+
+    # Log file details for debugging
+    local file_size=$(du -h "$local_file" | cut -f1)
+    log_info "Local file verified: $local_file ($file_size)"
+
     # Dry run mode
     if [[ "$DRY_RUN" == true ]]; then
         log_info "[DRY RUN] Would upload to: $s3_uri"
@@ -761,14 +772,22 @@ process_site() {
     if package_file=$(create_backup_package "$site_id" "$site_backup_dir" "$timestamp" "$volumes_count"); then
         log_success "Backup package created successfully"
 
-        # Upload package to S3
-        local s3_bucket=$(jq -r ".sites[$site_index].s3.bucket" "$config_file")
-        local s3_path=$(jq -r ".sites[$site_index].s3.path" "$config_file")
-
-        if upload_to_s3 "$package_file" "$s3_bucket" "$s3_path" "$S3_ENDPOINT" "$S3_REGION"; then
-            log_success "Package uploaded to S3 successfully"
+        # Verify package file exists before attempting upload
+        if [[ ! -f "$package_file" ]]; then
+            log_error "Package file does not exist after creation: $package_file"
+            log_error "Site backup directory: $site_backup_dir"
+            log_error "Listing backup directory contents:"
+            ls -lh "$site_backup_dir" | tail -10 | while read line; do log_info "  $line"; done
         else
-            log_error "Failed to upload package to S3"
+            # Upload package to S3
+            local s3_bucket=$(jq -r ".sites[$site_index].s3.bucket" "$config_file")
+            local s3_path=$(jq -r ".sites[$site_index].s3.path" "$config_file")
+
+            if upload_to_s3 "$package_file" "$s3_bucket" "$s3_path" "$S3_ENDPOINT" "$S3_REGION"; then
+                log_success "Package uploaded to S3 successfully"
+            else
+                log_error "Failed to upload package to S3"
+            fi
         fi
     else
         log_error "Failed to create backup package"
@@ -886,6 +905,10 @@ main() {
 
     # Setup logging
     setup_logging
+
+    # Log resolved paths for debugging
+    log_info "Backup directory: $BACKUP_BASE_DIR"
+    log_info "Log directory: $LOG_DIR"
 
     if [[ "$DRY_RUN" == true ]]; then
         log_info "DRY RUN MODE: No actual changes will be made"
