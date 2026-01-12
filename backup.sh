@@ -52,22 +52,38 @@ setup_logging() {
 
 log_info() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*"
-    echo "$message" | tee -a "$LOG_FILE"
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$message" | tee -a "$LOG_FILE"
+    else
+        echo "$message"
+    fi
 }
 
 log_error() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*"
-    echo "$message" | tee -a "$LOG_FILE" >&2
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$message" | tee -a "$LOG_FILE" >&2
+    else
+        echo "$message" >&2
+    fi
 }
 
 log_success() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [SUCCESS] $*"
-    echo "$message" | tee -a "$LOG_FILE"
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$message" | tee -a "$LOG_FILE"
+    else
+        echo "$message"
+    fi
 }
 
 log_warning() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [WARNING] $*"
-    echo "$message" | tee -a "$LOG_FILE"
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$message" | tee -a "$LOG_FILE"
+    else
+        echo "$message"
+    fi
 }
 
 ################################################################################
@@ -436,11 +452,28 @@ create_backup_package() {
     fi
 
     # Create package containing all volume backups and manifest
-    if tar czf "$package_path" \
-        -C "$site_backup_dir" \
-        ${site_id}_*_${timestamp}.tar.gz \
-        manifest_${timestamp}.txt 2>&1 | tee -a "$LOG_FILE"; then
+    # Build array of files to include in package
+    local files_to_package=()
 
+    # Add all volume backup files for this timestamp
+    while IFS= read -r -d '' backup_file; do
+        files_to_package+=("$(basename "$backup_file")")
+    done < <(find "$site_backup_dir" -name "${site_id}_*_${timestamp}.tar.gz" -print0 2>/dev/null)
+
+    # Add manifest file if it exists
+    if [[ -f "$temp_manifest" ]]; then
+        files_to_package+=("manifest_${timestamp}.txt")
+    fi
+
+    # Check if we have files to package
+    if [[ ${#files_to_package[@]} -eq 0 ]]; then
+        log_error "No backup files found to create package"
+        return 1
+    fi
+
+    # Create the tar archive
+    local tar_output
+    if tar_output=$(tar czf "$package_path" -C "$site_backup_dir" "${files_to_package[@]}" 2>&1); then
         if [[ -f "$package_path" ]]; then
             local package_size=$(du -h "$package_path" | cut -f1)
             log_success "Created backup package: $package_name ($package_size)"
@@ -452,6 +485,7 @@ create_backup_package() {
         fi
     else
         log_error "Failed to create backup package: $package_name"
+        log_error "Tar output: $tar_output"
         return 1
     fi
 }
