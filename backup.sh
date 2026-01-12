@@ -53,9 +53,9 @@ setup_logging() {
 log_info() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*"
     if [[ -n "$LOG_FILE" ]]; then
-        echo "$message" | tee -a "$LOG_FILE"
+        echo "$message" | tee -a "$LOG_FILE" >&2
     else
-        echo "$message"
+        echo "$message" >&2
     fi
 }
 
@@ -71,18 +71,18 @@ log_error() {
 log_success() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [SUCCESS] $*"
     if [[ -n "$LOG_FILE" ]]; then
-        echo "$message" | tee -a "$LOG_FILE"
+        echo "$message" | tee -a "$LOG_FILE" >&2
     else
-        echo "$message"
+        echo "$message" >&2
     fi
 }
 
 log_warning() {
     local message="[$(date '+%Y-%m-%d %H:%M:%S')] [WARNING] $*"
     if [[ -n "$LOG_FILE" ]]; then
-        echo "$message" | tee -a "$LOG_FILE"
+        echo "$message" | tee -a "$LOG_FILE" >&2
     else
-        echo "$message"
+        echo "$message" >&2
     fi
 }
 
@@ -257,7 +257,7 @@ backup_volume() {
         -v "${volume_name}:/source:ro" \
         -v "${site_backup_dir}:/backup" \
         busybox:latest \
-        tar czf "/backup/$backup_filename" -C /source . 2>&1 | tee -a "$LOG_FILE"; then
+        tar czf "/backup/$backup_filename" -C /source . 2>&1 | tee -a "$LOG_FILE" >&2; then
 
         # Verify backup file was created
         if [[ -f "$backup_path" ]]; then
@@ -307,7 +307,7 @@ backup_bind_mount() {
             -v "${host_path}:/source:ro" \
             -v "${site_backup_dir}:/backup" \
             busybox:latest \
-            tar czf "/backup/$backup_filename" -C /source . 2>&1 | tee -a "$LOG_FILE"; then
+            tar czf "/backup/$backup_filename" -C /source . 2>&1 | tee -a "$LOG_FILE" >&2; then
 
             # Verify backup file was created
             if [[ -f "$backup_path" ]]; then
@@ -332,7 +332,7 @@ backup_bind_mount() {
             -v "${parent_dir}:/source:ro" \
             -v "${site_backup_dir}:/backup" \
             busybox:latest \
-            tar czf "/backup/$backup_filename" -C /source "$filename" 2>&1 | tee -a "$LOG_FILE"; then
+            tar czf "/backup/$backup_filename" -C /source "$filename" 2>&1 | tee -a "$LOG_FILE" >&2; then
 
             # Verify backup file was created
             if [[ -f "$backup_path" ]]; then
@@ -394,7 +394,7 @@ upload_to_s3() {
     while [[ $retry -lt $max_retries ]]; do
         if aws s3 cp "$local_file" "$s3_uri" \
             --endpoint-url "$s3_endpoint" \
-            --region "$s3_region" 2>&1 | tee -a "$LOG_FILE"; then
+            --region "$s3_region" 2>&1 | tee -a "$LOG_FILE" >&2; then
             log_success "Upload complete: $filename"
             return 0
         fi
@@ -517,7 +517,7 @@ delete_from_s3() {
 
     if aws s3 rm "$s3_uri" \
         --endpoint-url "$s3_endpoint" \
-        --region "$s3_region" 2>&1 | tee -a "$LOG_FILE"; then
+        --region "$s3_region" 2>&1 | tee -a "$LOG_FILE" >&2; then
         return 0
     else
         log_error "Failed to delete from S3: $filename"
