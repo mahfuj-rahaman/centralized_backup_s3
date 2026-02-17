@@ -688,7 +688,7 @@ cleanup_local_backups() {
     # Delete individual volume backup files
     for file in "$site_backup_dir"/*_${timestamp}.tar.gz; do
         if [[ -f "$file" ]]; then
-            # Don't delete the package file (contains "_package_")
+            # Don't delete the package file here (handled separately below)
             if [[ ! "$file" =~ _package_ ]]; then
                 rm -f "$file"
                 deleted_count=$((deleted_count + 1))
@@ -702,15 +702,27 @@ cleanup_local_backups() {
         deleted_count=$((deleted_count + 1))
     fi
 
-    # Optionally delete the package file after S3 upload
-    if [[ -f "$site_backup_dir"/*_package_${timestamp}.tar.gz ]]; then
-        for package in "$site_backup_dir"/*_package_${timestamp}.tar.gz; do
-            if [[ -f "$package" ]]; then
-                rm -f "$package"
-                deleted_count=$((deleted_count + 1))
-            fi
-        done
+    # Delete the package file after S3 upload
+    for package in "$site_backup_dir"/*_package_${timestamp}.tar.gz; do
+        if [[ -f "$package" ]]; then
+            rm -f "$package"
+            deleted_count=$((deleted_count + 1))
+        fi
+    done
+
+    # Clean up any orphaned backup files from previous runs
+    # (e.g., if a previous cleanup was interrupted)
+    local orphan_count=0
+    for file in "$site_backup_dir"/*.tar.gz "$site_backup_dir"/manifest_*.txt; do
+        if [[ -f "$file" ]]; then
+            rm -f "$file"
+            orphan_count=$((orphan_count + 1))
+        fi
+    done
+    if [[ $orphan_count -gt 0 ]]; then
+        log_info "Cleaned up $orphan_count orphaned backup files from previous runs"
     fi
+    deleted_count=$((deleted_count + orphan_count))
 
     if [[ $deleted_count -gt 0 ]]; then
         log_info "Deleted $deleted_count local backup files"
