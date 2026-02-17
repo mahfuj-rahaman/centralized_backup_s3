@@ -8,9 +8,10 @@
   },
   "sites": [
     {
-      "_comment": "Example 1: WordPress site with bind mounts and date-organized S3 folders (multi-container: database + wordpress)",
+      "___________": "======================== SITE 1 START ========================",
+      "_comment": "WordPress with bind mounts | Date placeholders: {date}, {year}, {month}, {day}, {timestamp}",
       "site_id": "wordpress-bind-example",
-      "site_name": "WordPress with Bind Mounts (Multi-container)",
+      "site_name": "WordPress with Bind Mounts",
       "enabled": true,
       "backup_frequency": "daily",
       "retention": {
@@ -20,8 +21,7 @@
       },
       "s3": {
         "bucket": "my-backups",
-        "path": "docker-volumes/{date}/wordpress-bind",
-        "_comment": "Date placeholders: {date} = YYYY-MM-DD, {year} = YYYY, {month} = MM, {day} = DD, {timestamp} = YYYYMMDD_HHMMSS"
+        "path": "docker-volumes/{date}/wordpress-bind"
       },
       "volumes": [
         {
@@ -40,61 +40,34 @@
           "type": "bind",
           "path": "/sites/example.com/mariadb-data",
           "name": "mariadb_data",
-          "description": "MariaDB database files (database container)"
+          "description": "MariaDB database files"
         },
         {
           "type": "bind",
           "path": "/sites/example.com/web",
           "name": "wordpress_web",
-          "description": "WordPress site files (wordpress container)"
+          "description": "WordPress site files"
         },
         {
           "type": "bind",
           "path": "/sites/example.com/apache-config.conf",
           "name": "apache_config",
-          "description": "Apache config file (wordpress container)"
+          "description": "Apache config file"
         },
         {
           "type": "bind",
           "path": "/sites/example.com/php.ini",
           "name": "php_config",
-          "description": "PHP config file (wordpress container)"
+          "description": "PHP config file"
         }
-      ]
+      ],
+      "____________": "======================== SITE 1 END =========================="
     },
     {
-      "_comment": "Example 2: Docker named volumes with year/month organization",
-      "site_id": "wordpress-volumes",
-      "site_name": "WordPress with Docker Volumes",
-      "enabled": false,
-      "backup_frequency": "daily",
-      "retention": {
-        "type": "count",
-        "value": 7,
-        "description": "Keep last 7 backups"
-      },
-      "s3": {
-        "bucket": "my-backups",
-        "path": "docker-volumes/{year}/{month}/wordpress-volumes",
-        "_comment": "Organizes backups by year and month folders"
-      },
-      "volumes": [
-        {
-          "type": "volume",
-          "name": "wordpress_data",
-          "description": "WordPress uploads and content (Docker volume)"
-        },
-        {
-          "type": "volume",
-          "name": "wordpress_db",
-          "description": "MySQL database volume (Docker volume)"
-        }
-      ]
-    },
-    {
-      "_comment": "Example 3: Mixed - bind mounts + Docker volumes with simple date organization",
-      "site_id": "mixed-example",
-      "site_name": "Mixed Bind Mounts and Docker Volumes",
+      "___________": "======================== SITE 2 START ========================",
+      "_comment": "Docker named volumes | Retention by days instead of count",
+      "site_id": "app-docker-volumes",
+      "site_name": "App with Docker Volumes",
       "enabled": false,
       "backup_frequency": "daily",
       "retention": {
@@ -104,89 +77,21 @@
       },
       "s3": {
         "bucket": "my-backups",
-        "path": "{date}/mixed-example",
-        "_comment": "Date at beginning: backups organized as 2026-01-12/mixed-example/"
-      },
-      "volumes": [
-        {
-          "type": "bind",
-          "path": "/sites/example.com/config",
-          "name": "config_files",
-          "description": "Configuration files (bind mount)"
-        },
-        {
-          "type": "volume",
-          "name": "postgres_data",
-          "description": "PostgreSQL database (Docker volume)"
-        },
-        {
-          "type": "bind",
-          "path": "/sites/example.com/uploads",
-          "name": "user_uploads",
-          "description": "User uploaded files (bind mount)"
-        }
-      ]
-    },
-    {
-      "_comment": "Example 4: Nextcloud with Docker volumes",
-      "site_id": "nextcloud-prod",
-      "site_name": "Nextcloud Production",
-      "enabled": false,
-      "backup_frequency": "daily",
-      "retention": {
-        "type": "days",
-        "value": 30,
-        "description": "Keep backups for 30 days"
-      },
-      "s3": {
-        "bucket": "my-backups",
-        "path": "docker-volumes/nextcloud-prod"
+        "path": "docker-volumes/{year}/{month}/app-volumes"
       },
       "volumes": [
         {
           "type": "volume",
-          "name": "nextcloud_data",
-          "description": "Nextcloud user data (Docker volume)"
+          "name": "app_data",
+          "description": "Application data (Docker volume)"
         },
         {
           "type": "volume",
-          "name": "nextcloud_db",
-          "description": "Nextcloud database (Docker volume)"
+          "name": "app_db",
+          "description": "Database volume (Docker volume)"
         }
-      ]
-    },
-    {
-      "_comment": "Example 5: GitLab with multiple volumes",
-      "site_id": "gitlab-prod",
-      "site_name": "GitLab Production",
-      "enabled": false,
-      "backup_frequency": "weekly",
-      "retention": {
-        "type": "count",
-        "value": 4,
-        "description": "Keep last 4 weekly backups"
-      },
-      "s3": {
-        "bucket": "my-backups",
-        "path": "docker-volumes/gitlab-prod"
-      },
-      "volumes": [
-        {
-          "type": "volume",
-          "name": "gitlab_config",
-          "description": "GitLab configuration (Docker volume)"
-        },
-        {
-          "type": "volume",
-          "name": "gitlab_data",
-          "description": "GitLab repositories and data (Docker volume)"
-        },
-        {
-          "type": "volume",
-          "name": "gitlab_logs",
-          "description": "GitLab logs (Docker volume)"
-        }
-      ]
+      ],
+      "____________": "======================== SITE 2 END =========================="
     }
   ]
 }
